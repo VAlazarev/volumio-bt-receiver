@@ -1,0 +1,45 @@
+#!/bin/bash
+# Plays whatever a phone is streaming over A2DP on Volumio's output device.
+#
+# Installed to /usr/local/bin/bt-receiver and started by bt-receiver.service.
+# Settings come from /etc/default/bt-receiver; left blank there, the output
+# card and mixer are read from Volumio's own configuration at startup, so
+# changing the DAC in Volumio needs no change here.
+
+set -euo pipefail
+
+CONF=/etc/default/bt-receiver
+ALSA_CONF=/data/configuration/audio_interface/alsa_controller/config.json
+
+CARD=""
+MIXER=""
+# shellcheck source=/dev/null
+[ -r "$CONF" ] && . "$CONF"
+
+read_volumio_conf() {
+    sed -n 's/.*"'"$1"'":{"type":"string","value":"\([^"]*\)".*/\1/p' "$ALSA_CONF" 2>/dev/null | head -1
+}
+
+[ -z "$CARD" ] && CARD="$(read_volumio_conf outputdevicecardname)"
+[ -z "$MIXER" ] && MIXER="$(read_volumio_conf mixer)"
+
+if [ -z "$CARD" ]; then
+    echo "bt-receiver: не удалось определить звуковую карту." >&2
+    echo "Укажите её в $CONF (CARD=...). Доступны:" >&2
+    aplay -l 2>/dev/null | grep '^card' >&2
+    exit 1
+fi
+
+args=(--pcm="plughw:CARD=$CARD,DEV=0")
+
+# Without this bluealsa-aplay attaches to the ALSA mixer named "default",
+# which on Volumio routes into PulseAudio and times out - the worker then dies
+# the moment the output opens, and audio never plays.
+if [ -n "$MIXER" ]; then
+    args+=(--mixer-device="hw:CARD=$CARD" --mixer-name="$MIXER")
+else
+    args+=(--volume=none)
+fi
+
+echo "bt-receiver: карта=$CARD микшер=${MIXER:-нет}"
+exec /usr/bin/bluealsa-aplay "${args[@]}"

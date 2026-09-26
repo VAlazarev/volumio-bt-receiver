@@ -1,0 +1,14 @@
+# Settings for the Bluetooth A2DP receiver.
+# Installed to /etc/default/bt-receiver.
+#
+# Both may stay empty: bt-receiver then reads the output card and the hardware
+# mixer from Volumio's own settings, so switching DAC in Volumio is enough.
+# Fill them in only to send Bluetooth audio somewhere other than Volumio's
+# current output.
+#
+# CARD  - ALSA card name, as shown by:  aplay -l
+# MIXER - hardware mixer element, as shown by:  amixer -c <CARD> scontrols
+#         leave empty to let the phone control volume itself
+
+CARD=
+MIXER=

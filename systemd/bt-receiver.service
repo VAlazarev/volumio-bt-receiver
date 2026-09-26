@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetooth A2DP receiver (phone -> DAC)
+Documentation=https://github.com/VAlazarev/volumio-bt-receiver
+Requires=bluealsa.service
+After=bluealsa.service sound.target
+
+[Service]
+Type=simple
+User=volumio
+Group=audio
+ExecStart=/usr/local/bin/bt-receiver
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
