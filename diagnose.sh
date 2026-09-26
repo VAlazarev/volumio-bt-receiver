@@ -14,7 +14,9 @@ ps -eo args 2>/dev/null | grep "[b]luealsa " | sed 's/^/  /' || echo "  не з�
 
 echo
 echo "=== точки A2DP, зарегистрированные в BlueZ ==="
-busctl --system tree org.bluez 2>/dev/null | grep -i a2dp | sed 's/^/  /' || echo "  нет"
+# Endpoints are registered by bluealsa, so they show under its object tree -
+# asking org.bluez alone comes back empty.
+busctl --system tree org.bluealsa 2>/dev/null | grep -i a2dp | sed 's/^/  /' || echo "  нет"
 
 echo
 echo "=== объявляет ли адаптер приём звука ==="
@@ -50,5 +52,6 @@ echo "  (пусто - выход свободен)"
 
 echo
 echo "=== служба приёмника ==="
-systemctl is-enabled bt-receiver.service 2>/dev/null | sed 's/^/  автозапуск: /' || echo "  не установлена"
-systemctl is-active bt-receiver.service 2>/dev/null | sed 's/^/  состояние:  /' || true
+echo "  автозапуск: $(systemctl is-enabled bt-receiver.service 2>/dev/null || echo 'не установлена')"
+echo "  состояние:  $(systemctl is-active bt-receiver.service 2>/dev/null || echo 'не запущена')"
+echo "  процесс:    $(pgrep -a bluealsa-aplay 2>/dev/null || echo 'нет')"
