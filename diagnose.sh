@@ -52,6 +52,11 @@ echo "  (пусто - выход свободен)"
 
 echo
 echo "=== служба приёмника ==="
-echo "  автозапуск: $(systemctl is-enabled bt-receiver.service 2>/dev/null || echo 'не установлена')"
-echo "  состояние:  $(systemctl is-active bt-receiver.service 2>/dev/null || echo 'не запущена')"
-echo "  процесс:    $(pgrep -a bluealsa-aplay 2>/dev/null || echo 'нет')"
+# systemctl prints a state and still exits non-zero, so a || fallback would
+# print both. Fall back only on genuinely empty output.
+enabled=$(systemctl is-enabled bt-receiver.service 2>/dev/null)
+active=$(systemctl is-active bt-receiver.service 2>/dev/null)
+process=$(pgrep -a bluealsa-aplay 2>/dev/null)
+echo "  автозапуск: ${enabled:-не установлена}"
+echo "  состояние:  ${active:-не запущена}"
+echo "  процесс:    ${process:-нет}"
