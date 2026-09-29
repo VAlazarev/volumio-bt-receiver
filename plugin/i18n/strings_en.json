@@ -1,0 +1,6 @@
+{
+  "BTR": "Bluetooth Receiver",
+  "BTR_CONFIGURATION": "Bluetooth Receiver",
+  "BTR_INFO": "About",
+  "BTR_HINT": "Shows what a connected phone is playing and lets Volumio's buttons control it over AVRCP. Pair the phone with this device first."
+}

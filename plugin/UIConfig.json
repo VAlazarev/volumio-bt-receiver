@@ -1,0 +1,13 @@
+{
+  "page": { "label": "TRANSLATE.BTR_CONFIGURATION" },
+  "sections": [
+    {
+      "id": "section_info",
+      "element": "section",
+      "label": "TRANSLATE.BTR_INFO",
+      "content": [
+        { "id": "info", "element": "input", "type": "text", "label": "TRANSLATE.BTR_HINT", "value": "", "visibleIf": {"field": "info", "value": "never"} }
+      ]
+    }
+  ]
+}
