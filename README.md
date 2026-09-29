@@ -102,7 +102,16 @@ cd /data/plugins/music_service/bt_receiver && npm install --omit=dev
 ## Установка
 
 ```bash
-sudo bash install.sh
+bash install.sh
+```
+
+**Без `sudo`** — и это не опечатка. Полный `sudo` на Volumio просит пароль, но
+пользователю `volumio` разрешён без пароля набор команд, среди которых
+`systemctl`, `chmod`, `tee` и `mv`. Их хватает, чтобы поставить службу, поэтому
+установщик пользуется ими, а не требует root. Проверить, что разрешено:
+
+```bash
+sudo -n /bin/systemctl --version && echo есть
 ```
 
 Больше ничего в системе не трогается. Существующий `/etc/default/bt-receiver`
@@ -111,7 +120,7 @@ sudo bash install.sh
 Удалить (настройки останутся; `--purge` уберёт и их):
 
 ```bash
-sudo bash uninstall.sh
+bash uninstall.sh
 ```
 
 Посмотреть состояние всего, от чего это зависит, без root:
