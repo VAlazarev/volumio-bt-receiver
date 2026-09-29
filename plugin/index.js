@@ -58,10 +58,49 @@ btReceiver.prototype.onVolumioStart = function () {
     return libQ.resolve();
 };
 
+// Volumio routes pause and stop to whoever holds the volatile player, but
+// not play: volumioPlay unconditionally drops the volatile owner and starts
+// the queue instead. The UI hides this by sending toggle, which does check
+// state.volatile - but anything driving Volumio from outside, Home Assistant
+// included, sends a plain play and the phone just stays paused.
+//
+// So volumioPlay is wrapped: while we own the player and a phone is
+// attached, play means "resume the phone"; in every other case the original
+// runs untouched. onStop puts it back.
+btReceiver.prototype.interceptPlay = function () {
+    var self = this;
+    var router = self.commandRouter;
+
+    if (router.__btReceiverPlay) {
+        return;
+    }
+
+    router.__btReceiverPlay = router.volumioPlay;
+    router.volumioPlay = function (N) {
+        var machine = router.stateMachine;
+        if (self.player && machine && machine.isVolatile && machine.volatileService === SERVICE) {
+            self.logger.info('[bt_receiver] play перехвачен, возобновляю телефон');
+            return self.play();
+        }
+        return router.__btReceiverPlay.call(router, N);
+    };
+};
+
+btReceiver.prototype.restorePlay = function () {
+    var self = this;
+    var router = self.commandRouter;
+
+    if (router.__btReceiverPlay) {
+        router.volumioPlay = router.__btReceiverPlay;
+        delete router.__btReceiverPlay;
+    }
+};
+
 btReceiver.prototype.onStart = function () {
     var self = this;
 
     self.logger.info('[bt_receiver] onStart');
+    self.interceptPlay();
 
     // Volumio waits on this promise before loading the next plugin, so the
     // D-Bus connection deliberately is not part of it. It takes about 90ms
@@ -79,6 +118,7 @@ btReceiver.prototype.onStart = function () {
 btReceiver.prototype.onStop = function () {
     var self = this;
 
+    self.restorePlay();
     self.stopTicker();
     self.releasePlayer();
     if (self.bus) {
