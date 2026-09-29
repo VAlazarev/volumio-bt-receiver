@@ -46,6 +46,7 @@ function btReceiver(context) {
     // Whether we have already stopped whatever Volumio was playing for this
     // phone session; doing it once per session, not once per state push.
     self.tookOver = false;
+    self.stoodDown = false;
 }
 
 btReceiver.prototype.onVolumioStart = function () {
@@ -230,6 +231,7 @@ btReceiver.prototype.releasePlayer = function () {
     self.status = 'stop';
     self.position = 0;
     self.tookOver = false;
+    self.stoodDown = false;
     self.stopTicker();
     self.unsetVolatile();
 };
@@ -287,8 +289,44 @@ btReceiver.prototype.buildState = function () {
     };
 };
 
+// True when Volumio is playing something of its own. There is one output and
+// one screen, so the phone must not compete for either: two streams into the
+// same DAC stutter, and pushing our state a second at a time replaces the
+// real player's cover art with our placeholder.
+btReceiver.prototype.volumioBusy = function () {
+    var self = this;
+
+    try {
+        var state = self.commandRouter.stateMachine.getState();
+        return !!(state && state.status === 'play' && state.service && state.service !== SERVICE);
+    } catch (e) {
+        return false;
+    }
+};
+
+// Hands everything back and stops the phone, the way a speaker behaves when
+// you start playing something on it directly.
+btReceiver.prototype.standDown = function () {
+    var self = this;
+
+    // Once per episode: the ticker runs every second and AVRCP takes a moment
+    // to report the pause, so without this the phone gets a burst of them.
+    if (!self.stoodDown) {
+        self.stoodDown = true;
+        if (volumioStatus(self.status) === 'play') {
+            self.logger.info('[bt_receiver] Volumio играет своё - останавливаю телефон');
+            self.command('Pause');
+        }
+    }
+    self.unsetVolatile();
+};
+
 btReceiver.prototype.claim = function () {
     var self = this;
+
+    // Volumio is not playing anything of its own, so a later clash counts as
+    // a fresh episode.
+    self.stoodDown = false;
 
     // Volumio's "volatile" mode is how an external player - AirPlay, Spotify
     // Connect and now this - takes over the screen without owning a queue.
@@ -325,6 +363,12 @@ btReceiver.prototype.pushState = function () {
         return;
     }
 
+    if (self.volumioBusy()) {
+        self.standDown();
+        self.startTicker();
+        return;
+    }
+
     // Taking over from whatever Volumio was playing, once, the way
     // airplay_emulation does it - otherwise both would be playing at once.
     if (state.status === 'play' && !self.tookOver) {
@@ -356,6 +400,12 @@ btReceiver.prototype.startTicker = function () {
     self.ticker = setInterval(function () {
         if (!self.player || volumioStatus(self.status) === 'stop') {
             self.stopTicker();
+            return;
+        }
+        // Keep ticking but stay silent while Volumio plays its own music, so
+        // the phone can take the screen back the moment that stops.
+        if (self.volumioBusy()) {
+            self.standDown();
             return;
         }
         if (volumioStatus(self.status) === 'play') {
